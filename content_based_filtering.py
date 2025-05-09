@@ -112,22 +112,22 @@ def recommend(song_name, songs_data, transformed_data, k=10):
     Returns:
     DataFrame: A DataFrame containing the top k recommended songs with their names, artists, and Spotify preview URLs.
     """
-    # convert song name to lowercase
     song_name = song_name.lower()
-    # filter out the song from data
-    song_row = songs_data.loc[songs_data["name"] == song_name]
-    # get the index of song
+    
+    song_row = songs_data.loc[songs_data["name"].str.lower() == song_name]
+    
+    if song_row.empty:
+        raise ValueError(f"❌ Song '{song_name}' not found in the dataset.")
+    
     song_index = song_row.index[0]
-    # generate the input vector
-    input_vector = transformed_data[song_index].reshape(1,-1)
-    # calculate similarity scores
+    input_vector = transformed_data[song_index].reshape(1, -1)
+    
     similarity_scores = calculate_similarity_scores(input_vector, transformed_data)
-    # get the top k songs
     top_k_songs_indexes = np.argsort(similarity_scores.ravel())[-k-1:][::-1]
-    # get the top k songs names
+    
     top_k_songs_names = songs_data.iloc[top_k_songs_indexes]
-    # print the top k songs
-    top_k_list = top_k_songs_names[['name','artist','spotify_preview_url']].reset_index(drop=True)
+    top_k_list = top_k_songs_names[['name', 'artist', 'spotify_preview_url']].reset_index(drop=True)
+    
     return top_k_list
 
 
