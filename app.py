@@ -1,27 +1,24 @@
 import streamlit as st
-from content_based_filtering import recommend
+from content_based_filtering import content_recommendation
 from scipy.sparse import load_npz
 import pandas as pd
+from collaborative_filtering import collaborative_recommendation
+from numpy import load
 
-# Load paths
-transformed_data_path = "data/transformed_data.npz"
-cleaned_data_path = "data/cleaned_data.csv"
+# Load datasets
+songs_data = pd.read_csv("data/cleaned_data.csv")
+transformed_data = load_npz("data/transformed_data.npz")
+track_ids = load("data/track_ids.npy", allow_pickle=True)
+filtered_data = pd.read_csv("data/collab_filtered_data.csv")
+interaction_matrix = load_npz("data/interaction_matrix.npz")
 
-# Load data
-data = pd.read_csv(cleaned_data_path)
-transformed_data = load_npz(transformed_data_path)
-
-# Set page config
+# Streamlit Page Configuration
 st.set_page_config(page_title="Spotify Recommender", page_icon="🎧", layout="centered")
 
+# Custom CSS Styling
 st.markdown("""
     <style>
-        /* Title */
-        h1 {
-            color: #1DB954;
-        }
-
-        /* Input fields styling */
+        h1 { color: #1DB954; }
         .stTextInput > div > div > input {
             background-color: #1e1e1e;
             color: #FFFFFF;
@@ -29,29 +26,19 @@ st.markdown("""
             border-radius: 8px;
             padding: 0.5rem;
         }
-
-        /* Select box styling */
         .stSelectbox > div > div > div {
             background-color: #1e1e1e !important;
             color: #FFFFFF !important;
             border-radius: 8px;
         }
-
-        /* Form styling */
         .stForm {
-            # border: 1px solid #333333;
-            # padding: 25px;
-            # border-radius: 12px;
-            # background-color: #181818;
-            border: 2px solid #FF69B4; /* Pink color */
+            border: 2px solid #FF69B4;
             border-radius: 12px;
             padding: 20px;
             margin: 15px 0;
             background-color: #181818;
-            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3); /* Light pink for box-shadow */
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
         }
-
-        /* Button styling */
         button[kind="primary"] {
             background-color: #1DB954 !important;
             color: white !important;
@@ -60,17 +47,10 @@ st.markdown("""
             padding: 0.6rem 1.2rem;
             transition: background-color 0.3s ease;
         }
-
         button[kind="primary"]:hover {
             background-color: #1ed760 !important;
         }
-
-        /* Divider line */
-        hr {
-            border-top: 1px solid #2a2a2a;
-        }
-
-        /* Markdown audio block spacing */
+        hr { border-top: 1px solid #2a2a2a; }
         audio {
             margin-top: 10px;
             margin-bottom: 20px;
@@ -78,38 +58,47 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-# Main title
-st.markdown("<h1 style='text-align: center; color: #1DB954;'>🎧 Spotify Song Recommender</h1>", unsafe_allow_html=True)
+# Title & Subtitle
+st.markdown("<h1 style='text-align: center;'>🎧 Spotify Song Recommender</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Discover songs similar to your favorites</p>", unsafe_allow_html=True)
 
-# Input section
+# --- Input Form ---
 with st.form("recommendation_form"):
     st.markdown("### 🔍 Search for a Song")
-    song_name = st.text_input("Enter the name of a song:")
+    song_name = st.text_input("Enter a song name:")
+    artist_name = st.text_input("Enter the artist name:")
     k = st.select_slider("Number of recommendations", options=[5, 10, 15, 20], value=10)
+    filtering_type = st.selectbox("Select the type of filtering:", ['Content-Based Filtering', 'Collaborative Filtering'])
     submit_button = st.form_submit_button(label="Get Recommendations")
 
-# When button clicked
+# --- Recommendation Logic ---
 if submit_button:
-    if song_name.strip() == "":
-        st.warning("Please enter a song name.")
+    song_name = song_name.lower().strip()
+    artist_name = artist_name.lower().strip()
+
+    if not song_name or not artist_name:
+        st.warning("Please enter both song name and artist name.")
     else:
         try:
-            recommendations = recommend(song_name.lower(), data, transformed_data, k)
-
-            if recommendations.empty:
-                st.warning("No matching song found. Please check your spelling.")
+            if filtering_type == "Content-Based Filtering":
+                if ((songs_data["name"] == song_name) & (songs_data["artist"] == artist_name)).any():
+                    st.success(f"Recommendations for **{song_name.title()}** by **{artist_name.title()}**")
+                    recommendations = content_recommendation(song_name, songs_data, transformed_data, k)
+                    # content_recommendation(song_name=song_name, songs_data=songs_data, transformed_data=transformed_data, k=k)
+                else:
+                    st.warning(f"❌ Couldn't find '{song_name}' by '{artist_name}' in the dataset.")
+                    recommendations = None
             else:
-                st.markdown("---")
-                st.success(f"Recommendations for **{song_name.title()}**")
+                if ((filtered_data["name"] == song_name) & (filtered_data["artist"] == artist_name)).any():
+                    st.success(f"Recommendations for **{song_name.title()}** by **{artist_name.title()}**")
+                    recommendations = collaborative_recommendation(song_name, artist_name, track_ids, filtered_data, interaction_matrix, k)
+                else:
+                    st.warning(f"❌ Couldn't find '{song_name}' by '{artist_name}' in the dataset.")
+                    recommendations = None
 
-                # --- Now Playing Section ---
+            # --- Display Results ---
+            if recommendations is not None and not recommendations.empty:
                 now_playing = recommendations.iloc[0]
-                song_display = now_playing['name'].title()
-                artist_display = now_playing['artist'].title()
-                preview_url = now_playing['spotify_preview_url']
-
                 st.markdown("## 🎶 Now Playing")
                 with st.container():
                     st.markdown(f"""
@@ -121,24 +110,20 @@ if submit_button:
                             background-color: #181818;
                             box-shadow: 0 4px 15px rgba(0, 255, 100, 0.3);
                         '>
-                            <h3 style='color:#1DB954;margin-bottom:5px;'>🎵 {song_display}</h3>
-                            <p style='margin-top:0;margin-bottom:10px;'>by <strong>{artist_display}</strong></p>
+                            <h3 style='color:#1DB954;margin-bottom:5px;'>🎵 {now_playing['name'].title()}</h3>
+                            <p style='margin-top:0;margin-bottom:10px;'>by <strong>{now_playing['artist'].title()}</strong></p>
                     """, unsafe_allow_html=True)
 
-                    if pd.notna(preview_url) and preview_url.strip() != "":
-                        st.audio(preview_url)
+                    if pd.notna(now_playing['spotify_preview_url']):
+                        st.audio(now_playing['spotify_preview_url'])
                     else:
                         st.markdown("<p style='color:gray;'>No preview available</p>", unsafe_allow_html=True)
 
                     st.markdown("</div>", unsafe_allow_html=True)
 
-                # --- Other Recommendations ---
+                # Additional Songs
                 st.markdown("## 🎧 You Might Also Like")
-                for _, recommendation in recommendations.iloc[1:].iterrows():
-                    song_display = recommendation['name'].title()
-                    artist_display = recommendation['artist'].title()
-                    preview_url = recommendation['spotify_preview_url']
-
+                for idx, row in recommendations.iloc[1:].iterrows():
                     with st.container():
                         st.markdown(f"""
                             <div style='
@@ -149,16 +134,15 @@ if submit_button:
                                 background-color: #181818;
                                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                             '>
-                                <h4 style='color:#1DB954;margin-bottom:5px;'>🎵 {song_display}</h4>
-                                <p style='margin-top:0;margin-bottom:10px;'>by <strong>{artist_display}</strong></p>
+                                <h4 style='color:#1DB954;margin-bottom:5px;'>🎵 {row['name'].title()}</h4>
+                                <p style='margin-top:0;margin-bottom:10px;'>by <strong>{row['artist'].title()}</strong></p>
                         """, unsafe_allow_html=True)
 
-                        if pd.notna(preview_url) and preview_url.strip() != "":
-                            st.audio(preview_url)
+                        if pd.notna(row['spotify_preview_url']):
+                            st.audio(row['spotify_preview_url'])
                         else:
                             st.markdown("<p style='color:gray;'>No preview available</p>", unsafe_allow_html=True)
 
                         st.markdown("</div>", unsafe_allow_html=True)
-
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Something went wrong: {str(e)}")
