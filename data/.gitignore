@@ -2,3 +2,6 @@
 /Music_Info.csv
 /User_Listening_History.csv
 /cleaned_data.csv
+/track_ids.npy
+/collab_filtered_data.csv
+/interaction_matrix.npz
