@@ -5,8 +5,8 @@ stages:
     deps:
     - path: content_based_filtering.py
       hash: md5
-      md5: dbdebc4003940dc89940118d5aacf002
-      size: 6782
+      md5: e652629bf6ddcdfba50c444ae74332e4
+      size: 6675
     - path: data/cleaned_data.csv
       hash: md5
       md5: b5e99f8fcf0e54fa347c97490c779d67
@@ -22,7 +22,7 @@ stages:
       size: 4522771
     - path: transformer.joblib
       hash: md5
-      md5: 9786ba9c395fbc6dcdfa0bcaceac630a
+      md5: 2a44795d34749a8f623cb353a8216c3b
       size: 134010
   data_cleaning:
     cmd: python data_cleaning.py

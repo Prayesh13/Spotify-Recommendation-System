@@ -16,13 +16,6 @@ st.set_page_config(page_title="Spotify Recommender", page_icon="🎧", layout="c
 
 st.markdown("""
     <style>
-        /* General body and container styles */
-        .block-container {
-            padding-top: 2rem;
-            background-color: #121212;
-            color: #FFFFFF;
-        }
-
         /* Title */
         h1 {
             color: #1DB954;
@@ -46,11 +39,16 @@ st.markdown("""
 
         /* Form styling */
         .stForm {
-            border: 1px solid #333333;
-            padding: 25px;
+            # border: 1px solid #333333;
+            # padding: 25px;
+            # border-radius: 12px;
+            # background-color: #181818;
+            border: 2px solid #FF69B4; /* Pink color */
             border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
             background-color: #181818;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3); /* Light pink for box-shadow */
         }
 
         /* Button styling */
@@ -103,25 +101,64 @@ if submit_button:
             if recommendations.empty:
                 st.warning("No matching song found. Please check your spelling.")
             else:
+                st.markdown("---")
                 st.success(f"Recommendations for **{song_name.title()}**")
-                
-                for ind, recommendation in recommendations.iterrows():
+
+                # --- Now Playing Section ---
+                now_playing = recommendations.iloc[0]
+                song_display = now_playing['name'].title()
+                artist_display = now_playing['artist'].title()
+                preview_url = now_playing['spotify_preview_url']
+
+                st.markdown("## 🎶 Now Playing")
+                with st.container():
+                    st.markdown(f"""
+                        <div style='
+                            border: 2px solid #1DB954;
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin: 15px 0;
+                            background-color: #181818;
+                            box-shadow: 0 4px 15px rgba(0, 255, 100, 0.3);
+                        '>
+                            <h3 style='color:#1DB954;margin-bottom:5px;'>🎵 {song_display}</h3>
+                            <p style='margin-top:0;margin-bottom:10px;'>by <strong>{artist_display}</strong></p>
+                    """, unsafe_allow_html=True)
+
+                    if pd.notna(preview_url) and preview_url.strip() != "":
+                        st.audio(preview_url)
+                    else:
+                        st.markdown("<p style='color:gray;'>No preview available</p>", unsafe_allow_html=True)
+
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                # --- Other Recommendations ---
+                st.markdown("## 🎧 You Might Also Like")
+                for _, recommendation in recommendations.iloc[1:].iterrows():
                     song_display = recommendation['name'].title()
                     artist_display = recommendation['artist'].title()
                     preview_url = recommendation['spotify_preview_url']
 
-                    if ind == 0:
-                        st.markdown(f"## 🔊 Currently Playing: **{song_display}** by **{artist_display}**")
-                        st.audio(preview_url)
-                        st.write("---")
-                    else:
-                        col1, col2 = st.columns([0.1, 0.9])
-                        with col1:
-                            st.markdown(f"### {ind}")
-                        with col2:
-                            st.markdown(f"**{song_display}** by **{artist_display}**")
+                    with st.container():
+                        st.markdown(f"""
+                            <div style='
+                                border: 1px solid #333333;
+                                border-radius: 12px;
+                                padding: 20px;
+                                margin: 15px 0;
+                                background-color: #181818;
+                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                            '>
+                                <h4 style='color:#1DB954;margin-bottom:5px;'>🎵 {song_display}</h4>
+                                <p style='margin-top:0;margin-bottom:10px;'>by <strong>{artist_display}</strong></p>
+                        """, unsafe_allow_html=True)
+
+                        if pd.notna(preview_url) and preview_url.strip() != "":
                             st.audio(preview_url)
-                        st.write("---")
+                        else:
+                            st.markdown("<p style='color:gray;'>No preview available</p>", unsafe_allow_html=True)
+
+                        st.markdown("</div>", unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Error: {str(e)}")

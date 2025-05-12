@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spotify Song Recommender</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🎧 Spotify Song Recommender</h1>
+        <p>Discover songs similar to your favorites</p>
+
+        <form method="POST">
+            <label>Enter the name of a song:</label>
+            <input type="text" name="song_name" value="{{ song_name }}" required>
+            <label>Number of recommendations:</label>
+            <select name="num_recs">
+                {% for num in [5, 10, 15, 20] %}
+                    <option value="{{ num }}" {% if num == k %}selected{% endif %}>{{ num }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Get Recommendations</button>
+        </form>
+
+        {% if error %}
+            <div class="warning">{{ error }}</div>
+        {% endif %}
+
+        {% if recommendations %}
+            <h2>Recommendations for "{{ song_name.title() }}"</h2>
+            {% for _, row in recommendations.iterrows() %}
+                <div class="recommendation">
+                    <h3>🎵 {{ row['name'].title() }}</h3>
+                    <p>by <strong>{{ row['artist'].title() }}</strong></p>
+                    {% if row['spotify_preview_url'] %}
+                        <audio controls>
+                            <source src="{{ row['spotify_preview_url'] }}" type="audio/mpeg">
+                        </audio>
+                    {% else %}
+                        <p style="color:gray;">No preview available</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</body>
+</html>
